@@ -13,12 +13,13 @@
 #define OLED_RESET 4 							  // reset pin # (-1 if sharing Arduino reset pin)
 // ------------- lAZY VARIABLE USAGE ------------ //
 #define rSec 60 - t 							  // inverse time... easily? idk im lazy
-#define defaultA attach(9, 1000, 2000) 			  //
+#define defaultA attach(9, 1000, 2000) 			  // change first parameter if using different pin #
 // ------------ CONFIGURABLE OPTIONS ------------ //
 const int timerMin = 1; 						  // start timer at X:00
-const double bottleMass = 65000; 				  // empty bottle using test program
-const double unitOunce = 11250; 				  // use another test program to find
-const int weightMargin = 5000; 					  // minimum weight for detection
+const double bottleMass = 65000.0; 				  // empty bottle using test program
+const double unitOunce = 11250.0; 				  // use another test program to find
+const int weightMargin = 11250.0; 				  // minimum weight for detection
+const double ounceMargin = 3.0;					  // minimum fl oz to reset timer/alarm
 // ----------- BITMAP IMAGE FOR LOGO ------------ //
 const unsigned char PROGMEM helloWorld[] = {	  // byte for byte logo construction
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -61,11 +62,15 @@ NAU7802 mainScale;								  // scale constructor
 // ----- yea my names are terrible Im sorry ----- //
 int minT = 0; 									  // minute counter
 bool fRun = true; 								  // "first run" of the timer, set true to reset
+bool fScale = true;								  // "first run" but I was too lazy to move a code block
 bool sixty = false;								  // I don't remember why I needed this for the timer to work
 bool tFin = false;								  // timer finished
 int pos = 90;									  // set as the default position
 bool dir = true; 								  // true = positive direction
-double drank = 0;								  //
+double drank = 0;								  // total drank
+double tDrank = 0;								  // temp drank 
+double tWeight = 0;						          // temp weight
+double sDrank = 0;								  // sum drank
 //------------------------------------------------//
 
 void setup() {
@@ -87,7 +92,6 @@ void setup() {
 	delay(4000);
 	display.clearDisplay();
 	display.display();
-
 	if (mainScale.begin() == false) {
 		initializeScreen();
 		display.clearDisplay();
@@ -99,7 +103,6 @@ void setup() {
 	mainScale.setSampleRate(NAU7802_SPS_320);
 	mainScale.calibrateAFE();
 	mainScale.calculateZeroOffset(64);
-	scaleSetup();
 	// time
 	setTime(0);
 }
@@ -118,8 +121,8 @@ void loop() {
 		if ((second() > 5 && second() < 13) || (second() > 35 && second() < 43)) {
 			display.setCursor(0, 10);
 			display.setTextSize(1);
-			display.println(formatDouble(waterWeight(), 1) + "oz remaining");
-			display.print(String(drank) + "oz drank");
+			display.println(formatDouble(waterWeightOz(), 1) + "oz remaining");
+			display.print(formatDouble((drank / unitOunce), 1) + "oz drank");
 		}
 		else {
 			display.print(constructTime());
@@ -130,19 +133,68 @@ void loop() {
 			display.clearDisplay();
 			display.setCursor(40, 10);
 			display.setTextSize(1);
+			while (!weightDetection()) {
+				display.drawLine(0, 0, display.width()-1, 0, SSD1306_WHITE);
+				display.drawLine(0, display.height()-1, display.width()-1, display.height()-1, SSD1306_WHITE);
+				display.setCursor(0, 10);
+				display.print("Timer paused");
+				setTime(tTime);
+				display.display();
+				delay(500);
+			}
+			delay(1500);
+			checkDrink();
+			if (tDrank > 0 || fScale) {
+				tWeight = waterWeight();
+				fScale = false;
+			}
 		}
-		while (!weightDetection()) {
-			display.drawLine(0, 0, display.width()-1, 0, SSD1306_WHITE);
-			display.drawLine(0, display.height()-1, display.width()-1, display.height()-1, SSD1306_WHITE);
-			display.setCursor(0, 10);
-			display.print("Place bottle on scale");
-			setTime(tTime);
-			display.display();
-		}
+		
 	}
 	else {
 		tripAlarm();
+		if (!weightDetection()) {
+			while (!weightDetection()) {
+				initializeScreen();
+				display.print("Refill or Drink");
+				display.display();
+			}
+			delay(2000);
+			checkDrink();
+			delay(2000);
+		}
 	}
+}
+
+void checkDrink() {
+	tDrank = tWeight - waterWeight();
+	if (tDrank >= (unitOunce/2)) {
+		//testingDrank();
+		drank += tDrank;
+		sDrank += tDrank;
+		displaytDrank();
+		if (sDrank > (ounceMargin * unitOunce)) {
+			fRun = true;
+			fScale = true;
+			sDrank = 0;
+			tFin = false;
+		}
+	}
+	else if (tDrank < -(unitOunce/2)) {
+		drank += tWeight;
+		fRun = true;
+		fScale = true;
+		sDrank = 0;
+		tFin = false;
+		refill();
+	}
+}
+
+void refill() {
+	initializeScreen();
+	display.setTextSize(2);
+	display.println("Refill detected!");
+	display.display();
 }
 
 void initializeScreen() {
@@ -225,14 +277,27 @@ void alarm() {
 	//use a for loop that breaks using the weightDetection method
 }
 
-void scaleSetup() {
-	initializeScreen();
-	display.setCursor(0, 10);
-
+double waterWeightOz() {
+	return (mainScale.getReading() - mainScale.getZeroOffset() - bottleMass) / unitOunce;
 }
 
 double waterWeight() {
-	return (mainScale.getReading() - mainScale.getZeroOffset() - bottleMass) / unitOunce;
+	return (mainScale.getReading() - mainScale.getZeroOffset() - bottleMass);
+}
+
+String formatDouble(double val, int precision){
+	String temp = String(val);
+	return temp.substring(0, temp.indexOf('.') + precision + 1);
+}
+
+void displaytDrank() {
+	initializeScreen();
+	display.setCursor(0, 10);
+	display.setTextSize(1);
+	display.println(formatDouble((tDrank / unitOunce), 1) + "oz drank!");
+	display.print(formatDouble((drank / unitOunce), 1) + "oz total");
+	display.display();
+	delay(3500);
 }
 
 void testing() {
@@ -252,9 +317,14 @@ void testing() {
 	} 
 }
 
-String formatDouble(double val, int precision){
-	String temp = String(val);
-	return temp.substring(0, temp.indexOf('.') + precision + 1);
+void testingDrank() {
+	while (1) {
+		initializeScreen();
+		display.setTextSize(1);
+		display.println(tDrank);
+		display.println(tDrank / unitOunce);
+		display.println(ounceMargin * unitOunce);
+		display.display();
+	}
 }
-
 // need a means of detecting amount of water drank, and resetting the timer if drank enough (would be in the place water bottle function)

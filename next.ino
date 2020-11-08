@@ -86,12 +86,7 @@ void setup() {
 
 	// logo routine
 	display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-	display.clearDisplay();
-	display.drawBitmap(0, 0, helloWorld, 128, 64, SSD1306_WHITE); // display.drawBitmap(x position, y position, bitmap data, bitmap width, bitmap height, color)
-	display.display();
-	delay(4000);
-	display.clearDisplay();
-	display.display();
+	logoRoutine();
 	if (mainScale.begin() == false) {
 		initializeScreen();
 		display.clearDisplay();
@@ -106,6 +101,7 @@ void setup() {
 	// time
 	setTime(0);
 }
+
 /** premis: Boot -> Aquahumzah Logo -> Wait for weight to be detected -> pause execution -> store weight -> start timer -> if weight is less than an acceptable amount ->
             stop timer and assume water was lifted -> compare weight values to determine water drank -> reset timer if acceptable amount drank.
 			If timer ends before being lifted at some point, tripAlarm() and reuse that remove detection. When removed, stop alarm and pause.
@@ -117,7 +113,7 @@ void loop() {
 	initializeScreen();
 	display.setCursor(40, 10);
 	if (!tFin) {
-		//testing();
+		// switch between oz statistics and timer
 		if ((second() > 5 && second() < 13) || (second() > 35 && second() < 43)) {
 			display.setCursor(0, 10);
 			display.setTextSize(1);
@@ -129,6 +125,7 @@ void loop() {
 		}
 		display.display();
 		int tTime = second();
+		// if the bottle is picked up, pause execution and wait for weight
 		if (!weightDetection()) {
 			display.clearDisplay();
 			display.setCursor(40, 10);
@@ -143,7 +140,9 @@ void loop() {
 				delay(500);
 			}
 			delay(1500);
+			// check if some water is drank or bottle is refilled (assume all water was drank and give credit)
 			checkDrink();
+			// if there's a change in weight that's not negative, store it for next use.
 			if (tDrank > 0 || fScale) {
 				tWeight = waterWeight();
 				fScale = false;
@@ -159,6 +158,7 @@ void loop() {
 				display.print("Refill or Drink");
 				display.display();
 			}
+			// wastes time but makes error in weight calculation less likely
 			delay(2000);
 			checkDrink();
 			delay(2000);
@@ -187,6 +187,7 @@ void checkDrink() {
 		sDrank = 0;
 		tFin = false;
 		refill();
+		delay(2000);
 	}
 }
 
@@ -206,6 +207,7 @@ void initializeScreen() {
 	display.drawLine(0, display.height()-1, display.width()-1, display.height()-1, SSD1306_WHITE);
 }
 
+// probably the worst written part of this, but it works and I don't want to rewrite it
 String constructTime() {
 	if (sixty) {
 		delay(1001);
@@ -248,6 +250,7 @@ void tripAlarm() {
 	while (weightDetection()) {
 		alarm();
 	}
+	// attach/detach to prevent cheaper servos from "vibrating" when the exact value can't be reached
 	mainServo.detach();
 }
 
@@ -270,11 +273,8 @@ void alarm() {
 	else {
 		pos -= 15;
 	}
-	mainServo.write(pos);              // tell servo to go to position in variable 'pos'
+	mainServo.write(pos);
 	delay(50);
-	//TODO code servo to move the bells, that's all this method does.
-	//depending on how you do it, either store the last angle in a variable or
-	//use a for loop that breaks using the weightDetection method
 }
 
 double waterWeightOz() {
@@ -300,6 +300,17 @@ void displaytDrank() {
 	delay(3500);
 }
 
+void logoRoutine() {
+	display.clearDisplay();
+	for (int y = 64; y >= 0; y--) {
+		display.clearDisplay();
+		display.drawBitmap(0, y, helloWorld, 128, 64, SSD1306_WHITE);
+		display.display();
+	}
+	delay(3000);
+	display.display();
+}
+// debug test variables
 void testing() {
 	while (true) {
 		initializeScreen();
@@ -316,7 +327,7 @@ void testing() {
 		//tripAlarm();
 	} 
 }
-
+// debug variables for tDrank
 void testingDrank() {
 	while (1) {
 		initializeScreen();
@@ -327,4 +338,3 @@ void testingDrank() {
 		display.display();
 	}
 }
-// need a means of detecting amount of water drank, and resetting the timer if drank enough (would be in the place water bottle function)

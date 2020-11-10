@@ -7,21 +7,21 @@
 #include <Servo.h>
 #include <SparkFun_Qwiic_Scale_NAU7802_Arduino_Library.h>
 
-// ---------------- SCREEN SETUP -----------------//
-#define SCREEN_WIDTH 128 						  // width of screen
-#define SCREEN_HEIGHT 32 						  // height of screen 
-#define OLED_RESET 4 							  // reset pin # (-1 if sharing Arduino reset pin)
-// ------------- lAZY VARIABLE USAGE ------------ //
-#define rSec 60 - t 							  // inverse time... easily? idk im lazy
-#define defaultA attach(9, 1000, 2000) 			  // change first parameter if using different pin #
-// ------------ CONFIGURABLE OPTIONS ------------ //
-const int timerMin = 1; 						  // start timer at X:00
-const double bottleMass = 65000.0; 				  // empty bottle using test program
-const double unitOunce = 11250.0; 				  // use another test program to find
-const int weightMargin = 11250.0; 				  // minimum weight for detection
-const double ounceMargin = 3.0;					  // minimum fl oz to reset timer/alarm
-// ----------- BITMAP IMAGE FOR LOGO ------------ //
-const unsigned char PROGMEM helloWorld[] = {	  // byte for byte logo construction
+// ----------------- SCREEN SETUP ----------------- //
+#define SCREEN_WIDTH 128							// width of screen
+#define SCREEN_HEIGHT 32 							// height of screen 
+#define OLED_RESET 4								// reset pin # (-1 if sharing Arduino reset pin)
+// -------------- LAZY VARIABLE USAGE ------------- //
+#define rSec 60 - t									// inverse time... easily? idk im lazy
+#define defaultA attach(9, 1000, 2000)				// change first parameter if using different pin #
+// ------------- CONFIGURABLE OPTIONS ------------- //
+const int timerMin = 1;								// start timer at X:00
+const double bottleMass = 65000.0;					// empty bottle using test program
+const double unitOunce = 11250.0;					// use another test program to find
+const int weightMargin = 11250.0;					// minimum weight for detection
+const double ounceMargin = 3.0;						// minimum fl oz to reset timer/alarm
+// ------------ BITMAP IMAGE FOR LOGO ------------- //
+const unsigned char PROGMEM helloWorld[] = {		// byte for byte logo construction
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 	0xff, 0xff, 0xf8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 	0xff, 0x1f, 0xf2, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -55,23 +55,23 @@ const unsigned char PROGMEM helloWorld[] = {	  // byte for byte logo constructio
 	0xff, 0xfb, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 }; // https://javl.github.io/image2cpp/
-// ---------- HARDWARE INITIALIZATION ----------- //
+// ---------- HARDWARE INITIALIZATION ------------- //
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-Servo mainServo;                                  // servo constructor
-NAU7802 mainScale;								  // scale constructor
-// ----- yea my names are terrible Im sorry ----- //
-int minT = 0; 									  // minute counter
-bool fRun = true; 								  // "first run" of the timer, set true to reset
-bool fScale = true;								  // "first run" but I was too lazy to move a code block
-bool sixty = false;								  // I don't remember why I needed this for the timer to work
-bool tFin = false;								  // timer finished
-int pos = 90;									  // set as the default position
-bool dir = true; 								  // true = positive direction
-double drank = 0;								  // total drank
-double tDrank = 0;								  // temp drank 
-double tWeight = 0;						          // temp weight
-double sDrank = 0;								  // sum drank
-//------------------------------------------------//
+Servo mainServo;									// servo constructor
+NAU7802 mainScale;									// scale constructor
+// ------ yea my names are terrible Im sorry ------ //
+int minT = 0;										// minute counter
+bool fRun = true;									// "first run" of the timer, set true to reset
+bool fScale = true;									// "first run" but I was too lazy to move a code block
+bool sixty = false;									// I don't remember why I needed this for the timer to work
+bool tFin = false;									// timer finished
+int pos = 90;										// set as the default position
+bool dir = true;									// true = positive direction
+double drank = 0;									// total drank
+double tDrank = 0;									// temp drank 
+double tWeight = 0;									// temp weight
+double sDrank = 0;									// sum drank
+// ------------------------------------------------ //
 
 void setup() {
 	// wire initialization
@@ -101,13 +101,6 @@ void setup() {
 	// time
 	setTime(0);
 }
-
-/** premis: Boot -> Aquahumzah Logo -> Wait for weight to be detected -> pause execution -> store weight -> start timer -> if weight is less than an acceptable amount ->
-            stop timer and assume water was lifted -> compare weight values to determine water drank -> reset timer if acceptable amount drank.
-			If timer ends before being lifted at some point, tripAlarm() and reuse that remove detection. When removed, stop alarm and pause.
-			Continue alarm if placed back down and not enough drank.
-			At any point during a removal, if the water increases by a certain margin, assume they drank and a refill occured.
-*/
 
 void loop() { 
 	initializeScreen();
@@ -194,7 +187,8 @@ void checkDrink() {
 void refill() {
 	initializeScreen();
 	display.setTextSize(2);
-	display.println("Refill detected!");
+	display.setCursor(13, 10);
+	display.println("Refilled!");
 	display.display();
 }
 
@@ -312,7 +306,7 @@ void logoRoutine() {
 }
 // debug test variables
 void testing() {
-	while (true) {
+	while (1) {
 		initializeScreen();
 		display.setTextSize(1);
 		display.println(mainScale.getZeroOffset());

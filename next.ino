@@ -16,9 +16,9 @@
 #define defaultA attach(9, 1000, 2000)				// change first parameter if using different pin #
 // ------------- CONFIGURABLE OPTIONS ------------- //
 const int timerMin = 1;								// start timer at X:00
-const double bottleMass = 65000.0;					// empty bottle using test program
-const double unitOunce = 11250.0;					// use another test program to find
-const int weightMargin = 11250.0;					// minimum weight for detection
+const double bottleMass = 5500.0;					// empty bottle using test program
+const double unitOunce = 13500.0;					// use another test program to find
+const int weightMargin = 13500.0;					// minimum weight for detection
 const double ounceMargin = 3.0;						// minimum fl oz to reset timer/alarm
 // ------------ BITMAP IMAGE FOR LOGO ------------- //
 const unsigned char PROGMEM helloWorld[] = {		// byte for byte logo construction
@@ -233,7 +233,7 @@ String constructTime() {
 }
 
 bool weightDetection() { 
-	if (mainScale.getZeroOffset() < mainScale.getReading() - weightMargin) {
+	if (mainScale.getZeroOffset()*(-1) < mainScale.getReading()*(-1) - weightMargin) {
 		return true;
 	}
 	return false;
@@ -272,11 +272,11 @@ void alarm() {
 }
 
 double waterWeightOz() {
-	return (mainScale.getReading() - mainScale.getZeroOffset() - bottleMass) / unitOunce;
+	return (mainScale.getReading()*(-1) - mainScale.getZeroOffset()*(-1) - bottleMass) / unitOunce;
 }
 
 double waterWeight() {
-	return (mainScale.getReading() - mainScale.getZeroOffset() - bottleMass);
+	return (mainScale.getReading()*(-1) - mainScale.getZeroOffset()*(-1) - bottleMass);
 }
 
 String formatDouble(double val, int precision){
@@ -303,32 +303,4 @@ void logoRoutine() {
 	}
 	delay(3000);
 	display.display();
-}
-// debug test variables
-void testing() {
-	while (1) {
-		initializeScreen();
-		display.setTextSize(1);
-		display.println(mainScale.getZeroOffset());
-		display.println((mainScale.getReading() - mainScale.getZeroOffset() - bottleMass) / unitOunce);
-		if (weightDetection()) {
-			display.println("true");
-		}
-		else {
-			display.println("false");
-		}
-		display.display();
-		//tripAlarm();
-	} 
-}
-// debug variables for tDrank
-void testingDrank() {
-	while (1) {
-		initializeScreen();
-		display.setTextSize(1);
-		display.println(tDrank);
-		display.println(tDrank / unitOunce);
-		display.println(ounceMargin * unitOunce);
-		display.display();
-	}
 }
